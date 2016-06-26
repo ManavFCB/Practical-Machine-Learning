@@ -1,0 +1,93 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Manav"
+date: "26 June 2016"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+#Introduction
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+#Loading the Data
+
+The test and training data are loaded into R
+```{r}
+library(rpart)
+library(rpart.plot) 
+library(caret)
+library(randomForest)
+library(rattle)
+library(e1071)
+training<-read.csv("pml-training.csv",header=T,na.strings=c("NA"," ","#DIV/0!"))
+testing<-read.csv("pml-testing.csv",header=T,na.strings=c("NA"," ","#DIV/0!"))
+```
+
+#Partitioning the Data
+
+The training set is partitioned into sub training set and the test set.
+```{r}
+intrain<-createDataPartition(training$classe,p=0.7,list=FALSE)
+train1<-training[intrain,]
+test1<-training[-intrain,]
+```
+
+#Removing unwanted variables and missing values
+
+The variables concerned with the time chunks are not of use in this analysis.
+Hence such variables were removed from the test and training sets.
+
+The missing values are removed by the following code:
+
+```{r removeNA}
+train1<-train1[,colSums(is.na(train1))==0]
+test1<-test1[,colSums(is.na(test1))==0]
+```
+
+The columns 1 to 7 are removed as they are concerned with the time chunks.
+```{r}
+train1<-train1[,-c(1:7)]
+test1<-test1[,-c(1:7)]
+```
+
+#Building Prediction Models
+The predictions on the training set are using the Decision tree,Random
+Forest and Generalized Boosted Model.
+
+##Using the Decision tree
+```{r}
+set.seed(12)
+dtree<-rpart(classe~.,data=train1,method="class",control=rpart.control(method="cv",number=4))
+fancyRpartPlot(dtree)
+```
+
+The prediction on the test is done using the following code
+
+```{r}
+predicttree<-predict(dtree,newdata=test1,type="class")
+confusionMatrix(predicttree,test1$classe)
+```
+
+##Using the Random Forest
+```{r}
+rfor<-randomForest(classe~.,data=train1)
+predictrfor<-predict(rfor,newdata=test1,type="class")
+confusionMatrix(predictrfor,test1$classe)
+```
+
+#Using the Generalized Boosted Model
+```{r}
+mgbm<-train(classe~.,data=train1,method="gbm",trControl=trainControl(method="cv",number=4),verbose=F)
+predictgbm<-predict(mgbm,test1)
+confusionMatrix(predictgbm,test1$classe)
+```
+
+Since the Random Forest has higher accuracy than Decision tree and the Boosted Model,it is chosen as the most preferred option.
+
+#Results
+Thus the predictions on the test set is given below.
+```{r}
+predict(rfor,newdata=testing)
+```
